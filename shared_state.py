@@ -8,6 +8,7 @@ class SharedState:
         self._lock = threading.Lock()
         self._cpu_percent = 0.0
         self._volume = 50
+        self._ctx_rate = 0.0
 
     def get_cpu(self) -> float:
         with self._lock:
@@ -16,6 +17,14 @@ class SharedState:
     def set_cpu(self, value: float) -> None:
         with self._lock:
             self._cpu_percent = float(value)
+
+    def get_ctx_rate(self) -> float:
+        with self._lock:
+            return self._ctx_rate
+
+    def set_ctx_rate(self, value: float) -> None:
+        with self._lock:
+            self._ctx_rate = float(value)
 
     def get_volume(self) -> int:
         with self._lock:
