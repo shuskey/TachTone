@@ -41,7 +41,7 @@ Three concurrent components share two pieces of state (`cpu_percent`, `volume`):
 - `pystray` icon in the Windows taskbar
 - Tray icon: simple generated image via `Pillow` (no external image file)
 - Right-click menu: **Settings**, **Quit**
-- **Settings** opens a minimal Tkinter window with a single volume slider (0–100); changes apply immediately
+- **Settings** launches a Tkinter window in a dedicated thread (Tkinter must own its thread; it cannot run in the pystray callback directly); changes apply immediately to shared `volume`
 - **Quit** stops both threads cleanly and exits
 
 ### Shared State (`shared_state.py`)
@@ -59,9 +59,12 @@ Three concurrent components share two pieces of state (`cpu_percent`, `volume`):
 | Idle frequency (0% CPU) | 60 Hz |
 | Max frequency (100% CPU) | 300 Hz |
 | Pitch formula | `freq = 60 + (cpu_percent / 100) * 240` |
+| Sample rate | 44100 Hz |
+| Block size | 1024 samples (~43 callbacks/sec) |
 | Pitch smoothing | Exponential interpolation (factor 0.05 per callback) |
 | Amplitude | `volume / 100.0` |
 | At volume 0 | Silent but running — "waiting" state |
+| Phase continuity | `phase` carried across callbacks to avoid discontinuities |
 
 ---
 
