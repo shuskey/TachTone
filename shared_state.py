@@ -2,6 +2,8 @@ import threading
 
 
 class SharedState:
+    """Thread-safe container for cpu_percent and volume."""
+
     def __init__(self):
         self._lock = threading.Lock()
         self._cpu_percent = 0.0
@@ -13,7 +15,7 @@ class SharedState:
 
     def set_cpu(self, value: float) -> None:
         with self._lock:
-            self._cpu_percent = value
+            self._cpu_percent = float(value)
 
     def get_volume(self) -> int:
         with self._lock:

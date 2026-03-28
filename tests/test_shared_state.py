@@ -20,7 +20,7 @@ def test_set_and_get_volume():
     assert state.get_volume() == 80
 
 
-def test_concurrent_writes_do_not_corrupt():
+def test_concurrent_cpu_writes_do_not_corrupt():
     state = SharedState()
     errors = []
 
@@ -38,4 +38,4 @@ def test_concurrent_writes_do_not_corrupt():
         t.join()
 
     assert errors == []
-    assert 0.0 <= state.get_cpu() <= 4.0  # one of the writer values
+    assert 0.0 <= state.get_cpu() <= 4.0  # range(5) gives writers values 0.0–4.0
