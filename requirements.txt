@@ -1,0 +1,6 @@
+psutil
+sounddevice
+numpy
+pystray
+Pillow
+pytest
