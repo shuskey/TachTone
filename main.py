@@ -11,8 +11,10 @@ def main():
     engine = AudioEngine(state)
 
     def on_quit():
-        poller.stop()
-        engine.stop()
+        try:
+            poller.stop()
+        finally:
+            engine.stop()
 
     tray = TrayApp(state, on_quit=on_quit)
 
