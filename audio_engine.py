@@ -28,9 +28,9 @@ class AudioEngine(threading.Thread):
         self._current_freq += (target - self._current_freq) * SMOOTHING
         amp = self.amplitude()
 
-        t = (self._phase + np.arange(frames)) / SAMPLE_RATE
-        wave = amp * np.sin(2 * np.pi * self._current_freq * t).astype(np.float32)
-        self._phase = (self._phase + frames) % SAMPLE_RATE
+        t = np.arange(frames) / SAMPLE_RATE
+        wave = (amp * np.sin(2 * np.pi * self._current_freq * t + self._phase)).astype(np.float32)
+        self._phase = (self._phase + 2 * np.pi * self._current_freq * frames / SAMPLE_RATE) % (2 * np.pi)
 
         outdata[:, 0] = wave
 
