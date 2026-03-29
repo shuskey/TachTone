@@ -50,6 +50,38 @@ TOM_PITCH_SWEEP = 0.025   # seconds — pitch drops from +25 Hz to target
 TOM_PITCH_EXTRA = 25.0    # Hz above target at moment of hit
 TOM_VOICE_GAIN = 0.35
 
+# GPU organ voice
+GPU_SILENCE_THRESHOLD   = 5.0        # % — below this, organ stays silent
+GPU_ORGAN_DECAY         = 1.8        # seconds — long sustain, chords overlap
+GPU_VOICE_GAIN          = 0.30       # mix amplitude
+GPU_VIBRATO_RATE        = 4.5        # Hz
+GPU_TREMOLO_RATE        = 3.1        # Hz — intentionally non-integer vs vibrato
+GPU_VIBRATO_DEPTH       = 0.004      # ±0.4% of note frequency
+GPU_TREMOLO_DEPTH       = 0.25       # ±25% amplitude
+GPU_WOBBLE_BEATS        = 4          # stable beats before wobble reaches full depth
+
+# Quartal chords: 8 bands, 3 notes each stacked in perfect 4ths (5 semitones)
+# Rooted on C major scale degrees, voiced C4–Bb5
+GPU_CHORDS = [
+    [261.63, 349.23, 466.16],   # C4 + F4  + Bb4   (0–12.5%)
+    [293.66, 392.00, 523.25],   # D4 + G4  + C5    (12.5–25%)
+    [329.63, 440.00, 587.33],   # E4 + A4  + D5    (25–37.5%)
+    [349.23, 466.16, 622.25],   # F4 + Bb4 + Eb5   (37.5–50%)
+    [392.00, 523.25, 698.46],   # G4 + C5  + F5    (50–62.5%)
+    [440.00, 587.33, 783.99],   # A4 + D5  + G5    (62.5–75%)
+    [493.88, 659.25, 880.00],   # B4 + E5  + A5    (75–87.5%)
+    [523.25, 698.46, 932.33],   # C5 + F5  + Bb5   (87.5–100%)
+]
+
+# Organ timbre: partials 1–4, relatively equal weights
+GPU_ORGAN_HARMONICS     = [1.0, 0.7, 0.5, 0.3]
+GPU_ORGAN_HARMONICS_SUM = sum(GPU_ORGAN_HARMONICS)
+
+
+def _gpu_band(gpu_percent: float) -> int:
+    """Map GPU utilization % (0–100) to chord band index (0–7)."""
+    return min(int(gpu_percent / 100.0 * 8), 7)
+
 
 class AudioEngine(threading.Thread):
     def __init__(self, state: SharedState):
@@ -80,6 +112,13 @@ class AudioEngine(threading.Thread):
         # Car horn voice
         self._honk_buffer: np.ndarray | None = None
         self._honk_pos = 0
+        # GPU organ voice
+        self._gpu_band = 0
+        self._gpu_organ_env = 0.0
+        self._gpu_note_phases = [0.0] * 3
+        self._gpu_stable_beats = 0
+        self._gpu_vibrato_phase = 0.0
+        self._gpu_tremolo_phase = 0.0
 
     def target_freq(self) -> float:
         """Returns crankshaft frequency in Hz based on CPU load mapped to RPM."""
@@ -99,6 +138,20 @@ class AudioEngine(threading.Thread):
             self._piano_freq = NOTE_FREQS[self._note_band(snap.net_send_rate)]
             self._piano_env = 1.0
             self._piano_phase = 0.0
+
+        # GPU organ — triggers every beat when above silence threshold
+        if snap.gpu_3d_percent >= GPU_SILENCE_THRESHOLD:
+            new_band = _gpu_band(snap.gpu_3d_percent)
+            if new_band == self._gpu_band:
+                self._gpu_stable_beats += 1
+            else:
+                # Step one band toward target per beat — smooth melodic motion,
+                # never jumps more than one chord at a time regardless of load change
+                step = 1 if new_band > self._gpu_band else -1
+                self._gpu_band += step
+                self._gpu_stable_beats = 0
+                self._gpu_note_phases = [0.0] * 3
+            self._gpu_organ_env = 1.0
 
     def _bell_block(self, frames: int) -> np.ndarray:
         """Bell timbre: soft sine + 2 gentle harmonics, slow decay."""
@@ -161,6 +214,68 @@ class AudioEngine(threading.Thread):
         self._tom_env *= float(np.exp(-frames / (TOM_DECAY * SAMPLE_RATE)))
         self._tom_pitch_extra *= float(np.exp(-frames / (TOM_PITCH_SWEEP * SAMPLE_RATE)))
         return wave
+
+    def _gpu_organ_block(self, frames: int) -> np.ndarray:
+        """Quartal organ chord with layered vibrato + tremolo wobble."""
+        if self._gpu_organ_env < 0.001:
+            return np.zeros(frames, dtype=np.float32)
+
+        chord = GPU_CHORDS[self._gpu_band]
+        wobble = min(self._gpu_stable_beats / GPU_WOBBLE_BEATS, 1.0)
+        TWO_PI = 2 * np.pi
+        sample_idx = np.arange(frames)
+
+        # Vibrato: slow LFO modulates each note's frequency ±GPU_VIBRATO_DEPTH
+        vibrato = GPU_VIBRATO_DEPTH * wobble * np.sin(
+            TWO_PI * GPU_VIBRATO_RATE * sample_idx / SAMPLE_RATE
+            + self._gpu_vibrato_phase
+        )
+
+        # Tremolo: slower LFO pulses amplitude ±GPU_TREMOLO_DEPTH
+        tremolo = 1.0 - GPU_TREMOLO_DEPTH * wobble * 0.5 * (
+            1.0 - np.cos(
+                TWO_PI * GPU_TREMOLO_RATE * sample_idx / SAMPLE_RATE
+                + self._gpu_tremolo_phase
+            )
+        )
+
+        # Decaying amplitude envelope
+        env = self._gpu_organ_env * np.exp(
+            -sample_idx / (GPU_ORGAN_DECAY * SAMPLE_RATE)
+        )
+
+        wave = np.zeros(frames)
+        for i, f in enumerate(chord):
+            # Phase accumulation: vibrato modulates instantaneous frequency
+            inst_freq = f * (1.0 + vibrato)
+            fund_phase_arr = self._gpu_note_phases[i] + np.cumsum(
+                TWO_PI * inst_freq / SAMPLE_RATE
+            )
+            # Organ harmonics: harmonic n uses n × fundamental phase
+            note_wave = np.zeros(frames)
+            for n, w in enumerate(GPU_ORGAN_HARMONICS, start=1):
+                note_wave += w * np.sin(n * fund_phase_arr)
+            note_wave /= GPU_ORGAN_HARMONICS_SUM
+            wave += note_wave
+            self._gpu_note_phases[i] = float(fund_phase_arr[-1]) % TWO_PI
+
+        wave /= len(chord)
+        wave *= env * tremolo
+
+        # Advance envelope and LFO phases for next block
+        self._gpu_organ_env *= float(
+            np.exp(-frames / (GPU_ORGAN_DECAY * SAMPLE_RATE))
+        )
+        self._gpu_vibrato_phase = (
+            self._gpu_vibrato_phase
+            + TWO_PI * GPU_VIBRATO_RATE * frames / SAMPLE_RATE
+        ) % TWO_PI
+        self._gpu_tremolo_phase = (
+            self._gpu_tremolo_phase
+            + TWO_PI * GPU_TREMOLO_RATE * frames / SAMPLE_RATE
+        ) % TWO_PI
+
+        return wave.astype(np.float32)
 
     def _make_honk_segment(self, duration_samples: int) -> np.ndarray:
         t = np.arange(duration_samples) / SAMPLE_RATE
@@ -249,6 +364,7 @@ class AudioEngine(threading.Thread):
         net_ch   = snap.network_vol / 100.0
         disk_ch  = snap.disk_vol / 100.0
         honk_ch  = snap.honk_vol / 100.0
+        gpu_ch   = snap.gpu_vol / 100.0
 
         # Engine tone (CPU load → RPM → harmonic stack + AM chug + noise)
         rpm = ENGINE_IDLE_RPM + (snap.cpu_percent / 100.0) * (ENGINE_MAX_RPM - ENGINE_IDLE_RPM)
@@ -293,11 +409,13 @@ class AudioEngine(threading.Thread):
         piano = self._piano_block(frames)
         tom   = self._tom_block(frames)
         honk  = self._honk_block(frames)
+        gpu_organ = self._gpu_organ_block(frames)
 
         total = (tach
                  + master * NET_VOICE_GAIN * net_ch * (bell + piano)
                  + master * TOM_VOICE_GAIN * disk_ch * tom
-                 + master * honk_ch * honk)
+                 + master * honk_ch * honk
+                 + master * GPU_VOICE_GAIN * gpu_ch * gpu_organ)
         outdata[:, 0] = np.clip(total, -1.0, 1.0).astype(np.float32)
 
     def run(self) -> None:

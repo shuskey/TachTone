@@ -78,3 +78,72 @@ def test_callback_phase_continuity():
     assert actual_step < max_step * 2, (
         f"Discontinuity at block boundary: {actual_step:.4f} > {max_step * 2:.4f}"
     )
+
+
+from audio_engine import _gpu_band, GPU_SILENCE_THRESHOLD
+
+
+def test_gpu_band_boundaries():
+    assert _gpu_band(0.0)   == 0
+    assert _gpu_band(12.4)  == 0
+    assert _gpu_band(12.5)  == 1
+    assert _gpu_band(50.0)  == 4
+    assert _gpu_band(99.9)  == 7
+    assert _gpu_band(100.0) == 7
+
+
+def test_gpu_organ_silent_when_gpu_vol_zero():
+    """All other channels silenced — organ should contribute nothing at gpu_vol=0."""
+    state = SharedState()
+    state.set_gpu_3d_percent(80.0)
+    state.set_gpu_vol(0)
+    state.set_volume(100)
+    state.set_cpu_vol(0)
+    state.set_network_vol(0)
+    state.set_disk_vol(0)
+    state.set_honk_vol(0)
+    engine = AudioEngine(state)
+    engine._on_beat(state.snapshot())  # prime organ envelope
+
+    frames = 1024
+    out = np.zeros((frames, 1), dtype=np.float32)
+    engine._callback(out, frames, None, None)
+    assert np.all(out == 0.0)
+
+
+def test_gpu_organ_produces_audio_when_active():
+    """GPU organ contributes non-zero output when gpu_3d_percent is above threshold."""
+    state = SharedState()
+    state.set_gpu_3d_percent(80.0)
+    state.set_gpu_vol(100)
+    state.set_volume(100)
+    state.set_cpu_vol(0)
+    state.set_network_vol(0)
+    state.set_disk_vol(0)
+    state.set_honk_vol(0)
+    engine = AudioEngine(state)
+    engine._on_beat(state.snapshot())  # prime organ envelope
+
+    frames = 1024
+    out = np.zeros((frames, 1), dtype=np.float32)
+    engine._callback(out, frames, None, None)
+    assert np.any(out != 0.0)
+
+
+def test_gpu_organ_silent_below_threshold():
+    """Organ stays silent when GPU % is below GPU_SILENCE_THRESHOLD."""
+    state = SharedState()
+    state.set_gpu_3d_percent(GPU_SILENCE_THRESHOLD - 1.0)
+    state.set_gpu_vol(100)
+    state.set_volume(100)
+    state.set_cpu_vol(0)
+    state.set_network_vol(0)
+    state.set_disk_vol(0)
+    state.set_honk_vol(0)
+    engine = AudioEngine(state)
+    engine._on_beat(state.snapshot())  # should NOT prime envelope
+
+    frames = 1024
+    out = np.zeros((frames, 1), dtype=np.float32)
+    engine._callback(out, frames, None, None)
+    assert np.all(out == 0.0)
