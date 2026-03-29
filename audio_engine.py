@@ -4,6 +4,7 @@ import numpy as np
 import sounddevice as sd
 from shared_state import SharedState
 
+
 SAMPLE_RATE = 44100
 BLOCK_SIZE = 1024
 SMOOTHING = 0.02      # slower than before — engines have rotational inertia
@@ -77,6 +78,15 @@ GPU_CHORDS = [
 GPU_ORGAN_HARMONICS     = [1.0, 0.7, 0.5, 0.3]
 GPU_ORGAN_HARMONICS_SUM = sum(GPU_ORGAN_HARMONICS)
 
+# Beat voicings: which note indices (0=root, 1=4th, 2=top) to play each beat.
+# Picked randomly on each beat so the chord breathes rather than droning.
+GPU_BEAT_VOICINGS = [
+    (0, 1, 2),  # full quartal chord
+    (0, 1),     # root + fourth
+    (1, 2),     # fourth + top
+    (0, 2),     # root + top (open voicing)
+]
+
 
 def _gpu_band(gpu_percent: float) -> int:
     """Map GPU utilization % (0–100) to chord band index (0–7)."""
@@ -119,6 +129,7 @@ class AudioEngine(threading.Thread):
         self._gpu_stable_beats = 0
         self._gpu_vibrato_phase = 0.0
         self._gpu_tremolo_phase = 0.0
+        self._gpu_active_voicing = GPU_BEAT_VOICINGS[0]
 
     def target_freq(self) -> float:
         """Returns crankshaft frequency in Hz based on CPU load mapped to RPM."""
@@ -151,6 +162,8 @@ class AudioEngine(threading.Thread):
                 self._gpu_band += step
                 self._gpu_stable_beats = 0
                 self._gpu_note_phases = [0.0] * 3
+            # Pick a random voicing each beat so the chord breathes
+            self._gpu_active_voicing = random.choice(GPU_BEAT_VOICINGS)
             self._gpu_organ_env = 1.0
 
     def _bell_block(self, frames: int) -> np.ndarray:
@@ -246,20 +259,21 @@ class AudioEngine(threading.Thread):
 
         wave = np.zeros(frames)
         for i, f in enumerate(chord):
-            # Phase accumulation: vibrato modulates instantaneous frequency
+            # Always advance phase to stay continuous, but only add to mix if active
             inst_freq = f * (1.0 + vibrato)
             fund_phase_arr = self._gpu_note_phases[i] + np.cumsum(
                 TWO_PI * inst_freq / SAMPLE_RATE
             )
-            # Organ harmonics: harmonic n uses n × fundamental phase
-            note_wave = np.zeros(frames)
-            for n, w in enumerate(GPU_ORGAN_HARMONICS, start=1):
-                note_wave += w * np.sin(n * fund_phase_arr)
-            note_wave /= GPU_ORGAN_HARMONICS_SUM
-            wave += note_wave
+            if i in self._gpu_active_voicing:
+                # Organ harmonics: harmonic n uses n × fundamental phase
+                note_wave = np.zeros(frames)
+                for n, w in enumerate(GPU_ORGAN_HARMONICS, start=1):
+                    note_wave += w * np.sin(n * fund_phase_arr)
+                note_wave /= GPU_ORGAN_HARMONICS_SUM
+                wave += note_wave
             self._gpu_note_phases[i] = float(fund_phase_arr[-1]) % TWO_PI
 
-        wave /= len(chord)
+        wave /= len(self._gpu_active_voicing)
         wave *= env * tremolo
 
         # Advance envelope and LFO phases for next block

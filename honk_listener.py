@@ -24,11 +24,13 @@ class HonkListener(threading.Thread):
             while not self._stop_event.is_set():
                 try:
                     data, _ = sock.recvfrom(64)
-                    if data == b"honk":
+                    if data == b"need attention":
                         self._state.set_honk(True)
                         self._restart_impatient_timer()
-                    elif data == b"cancel":
+                    elif data == b"got attention":
                         self._cancel_impatient_timer()
+                    elif data == b"claude task complete":
+                        self._state.set_honk(True)
                 except socket.timeout:
                     continue
 
