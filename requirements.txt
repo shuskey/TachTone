@@ -4,3 +4,4 @@ numpy
 pystray
 Pillow
 pytest
+wmi
