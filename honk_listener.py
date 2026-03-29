@@ -32,9 +32,13 @@ class HonkListener(threading.Thread):
                         self._restart_impatient_timer()
                     elif data == b"got attention":
                         self._cancel_impatient_timer()
+                        self._cancel_approval_timer()
                     elif data == b"claude task complete":
+                        self._cancel_impatient_timer()
+                        self._cancel_approval_timer()
                         self._state.set_honk(True)
                     elif data == b"pre_tool_use":
+                        self._cancel_impatient_timer()
                         self._restart_approval_timer()
                     elif data == b"post_tool_use":
                         self._cancel_approval_timer()

@@ -29,6 +29,16 @@ python main.py
 
 Requires Python 3.10+ and Windows (system tray + audio).
 
+## System Tray
+
+TachTone runs silently in the Windows system tray. To find it:
+
+1. Look for the hidden icons arrow (**^**) in the bottom-right corner of the taskbar.
+2. Click it to expand the tray, then locate the TachTone icon.
+3. **Right-click** the icon for the context menu:
+   - **Settings** — open the volume mixer
+   - **Quit** — stop TachTone
+
 ## Settings
 
 Right-click the tray icon → **Settings** to mix per-channel volumes:
