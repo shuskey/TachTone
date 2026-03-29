@@ -17,7 +17,7 @@ ENGINE_MAX_RPM  = 7000
 ENGINE_HARMONICS     = [0.30, 1.00, 0.45, 0.80, 0.25, 0.55, 0.15, 0.35]
 ENGINE_HARMONICS_SUM = sum(ENGINE_HARMONICS)
 ENGINE_AM_DEPTH  = 0.40   # max amplitude-modulation depth at idle (chug)
-ENGINE_NOISE_AMP = 0.018  # mechanical noise floor
+ENGINE_NOISE_AMP = 0.004  # mechanical noise floor
 
 # Network note voices
 BPM = 80
