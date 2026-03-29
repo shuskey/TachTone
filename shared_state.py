@@ -17,6 +17,8 @@ class StateSnapshot:
     honk_vol: int
     honk: bool
     impatient_honk: bool
+    gpu_3d_percent: float
+    gpu_vol: int
 
 
 class SharedState:
@@ -40,6 +42,9 @@ class SharedState:
         self._honk = False
         self._impatient_honk = False
         self._impatient_honking_enabled = True
+        # GPU fields
+        self._gpu_3d_percent = 0.0
+        self._gpu_vol = 50
 
     def _get(self, attr):
         with self._lock:
@@ -82,6 +87,12 @@ class SharedState:
     def get_honk_vol(self) -> int:            return self._get('_honk_vol')
     def set_honk_vol(self, v: int) -> None:   self._set('_honk_vol', v, int)
 
+    def get_gpu_3d_percent(self) -> float:           return self._get('_gpu_3d_percent')
+    def set_gpu_3d_percent(self, v: float) -> None:  self._set('_gpu_3d_percent', v, float)
+
+    def get_gpu_vol(self) -> int:            return self._get('_gpu_vol')
+    def set_gpu_vol(self, v: int) -> None:   self._set('_gpu_vol', v, int)
+
     def get_honk(self) -> bool:              return self._get('_honk')
     def set_honk(self, v: bool) -> None:     self._set('_honk', v, bool)
 
@@ -107,4 +118,6 @@ class SharedState:
                 honk_vol=self._honk_vol,
                 honk=self._honk,
                 impatient_honk=self._impatient_honk,
+                gpu_3d_percent=self._gpu_3d_percent,
+                gpu_vol=self._gpu_vol,
             )

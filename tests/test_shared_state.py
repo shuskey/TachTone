@@ -39,3 +39,28 @@ def test_concurrent_cpu_writes_do_not_corrupt():
 
     assert errors == []
     assert 0.0 <= state.get_cpu() <= 4.0  # range(5) gives writers values 0.0–4.0
+
+
+def test_gpu_3d_percent_defaults_to_zero():
+    state = SharedState()
+    assert state.get_gpu_3d_percent() == 0.0
+
+
+def test_gpu_vol_defaults_to_50():
+    state = SharedState()
+    assert state.get_gpu_vol() == 50
+
+
+def test_gpu_3d_percent_round_trips():
+    state = SharedState()
+    state.set_gpu_3d_percent(73.5)
+    assert state.get_gpu_3d_percent() == 73.5
+
+
+def test_snapshot_includes_gpu_fields():
+    state = SharedState()
+    state.set_gpu_3d_percent(42.0)
+    state.set_gpu_vol(75)
+    snap = state.snapshot()
+    assert snap.gpu_3d_percent == 42.0
+    assert snap.gpu_vol == 75
