@@ -1,3 +1,4 @@
+import random
 import threading
 import numpy as np
 import sounddevice as sd
@@ -161,16 +162,46 @@ class AudioEngine(threading.Thread):
         self._tom_pitch_extra *= float(np.exp(-frames / (TOM_PITCH_SWEEP * SAMPLE_RATE)))
         return wave
 
+    def _make_honk_segment(self, duration_samples: int) -> np.ndarray:
+        t = np.arange(duration_samples) / SAMPLE_RATE
+        env = np.ones(duration_samples)
+        attack = min(HONK_ATTACK, duration_samples // 4)
+        release = min(HONK_RELEASE, duration_samples // 4)
+        env[:attack] = np.linspace(0.0, 1.0, attack)
+        env[-release:] = np.linspace(1.0, 0.0, release)
+        return env * 0.5 * (np.sin(2 * np.pi * HONK_FREQ1 * t) +
+                             np.sin(2 * np.pi * HONK_FREQ2 * t))
+
     def _trigger_honk(self) -> None:
         """Pre-render the full honk-honk waveform and reset playback position."""
-        t = np.arange(HONK_DURATION) / SAMPLE_RATE
-        env = np.ones(HONK_DURATION)
-        env[:HONK_ATTACK] = np.linspace(0.0, 1.0, HONK_ATTACK)
-        env[-HONK_RELEASE:] = np.linspace(1.0, 0.0, HONK_RELEASE)
-        honk = env * 0.5 * (np.sin(2 * np.pi * HONK_FREQ1 * t) +
-                             np.sin(2 * np.pi * HONK_FREQ2 * t))
+        honk = self._make_honk_segment(HONK_DURATION)
         gap = np.zeros(HONK_GAP)
         self._honk_buffer = np.concatenate([honk, gap, honk]).astype(np.float32)
+        self._honk_pos = 0
+
+    def _trigger_impatient_honk(self) -> None:
+        """Pre-render the grouchy multi-honk sequence: cluster + long lean + cluster + medium."""
+        short_gap = np.zeros(HONK_GAP)
+        long_gap  = np.zeros(int(SAMPLE_RATE * 0.35))
+
+        def cluster(n: int) -> list:
+            parts = []
+            for i in range(n):
+                parts.append(self._make_honk_segment(HONK_DURATION))
+                if i < n - 1:
+                    parts.append(short_gap)
+            return parts
+
+        parts = []
+        parts.extend(cluster(random.randint(3, 4)))
+        parts.append(long_gap)
+        parts.append(self._make_honk_segment(int(SAMPLE_RATE * random.uniform(4.5, 5.5))))
+        parts.append(long_gap)
+        parts.extend(cluster(random.randint(3, 4)))
+        parts.append(long_gap)
+        parts.append(self._make_honk_segment(int(SAMPLE_RATE * random.uniform(1.8, 2.2))))
+
+        self._honk_buffer = np.concatenate(parts).astype(np.float32)
         self._honk_pos = 0
 
     def _honk_block(self, frames: int) -> np.ndarray:
@@ -193,10 +224,13 @@ class AudioEngine(threading.Thread):
     def _callback(self, outdata, frames, time_info, status):
         snap = self._state.snapshot()
 
-        # Honk trigger (one write lock if needed)
+        # Honk triggers
         if snap.honk:
             self._state.set_honk(False)
             self._trigger_honk()
+        elif snap.impatient_honk:
+            self._state.set_impatient_honk(False)
+            self._trigger_impatient_honk()
 
         # Network beat clock (quarter notes)
         self._beat_samples_left -= frames

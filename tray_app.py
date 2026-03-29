@@ -120,6 +120,22 @@ def _open_settings(state: SharedState) -> None:
 
             grid_row += 1
 
+        ttk.Separator(outer, orient="horizontal").grid(
+            row=grid_row, column=0, columnspan=3, sticky="ew", pady=6
+        )
+        grid_row += 1
+
+        impatient_var = tk.BooleanVar(value=state.get_impatient_honking_enabled())
+
+        def on_impatient_toggle():
+            state.set_impatient_honking_enabled(impatient_var.get())
+
+        tk.Checkbutton(
+            outer, text="Include impatient honking",
+            variable=impatient_var, command=on_impatient_toggle, anchor="w",
+        ).grid(row=grid_row, column=0, columnspan=3, sticky="w")
+        grid_row += 1
+
         root.mainloop()
 
     threading.Thread(target=run, daemon=True).start()

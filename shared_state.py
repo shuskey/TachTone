@@ -16,6 +16,7 @@ class StateSnapshot:
     disk_vol: int
     honk_vol: int
     honk: bool
+    impatient_honk: bool
 
 
 class SharedState:
@@ -35,8 +36,10 @@ class SharedState:
         self._network_vol = 50
         self._disk_vol = 50
         self._honk_vol = 100
-        # Honk trigger flag
+        # Honk trigger flags
         self._honk = False
+        self._impatient_honk = False
+        self._impatient_honking_enabled = True
 
     def _get(self, attr):
         with self._lock:
@@ -82,6 +85,12 @@ class SharedState:
     def get_honk(self) -> bool:              return self._get('_honk')
     def set_honk(self, v: bool) -> None:     self._set('_honk', v, bool)
 
+    def get_impatient_honk(self) -> bool:              return self._get('_impatient_honk')
+    def set_impatient_honk(self, v: bool) -> None:     self._set('_impatient_honk', v, bool)
+
+    def get_impatient_honking_enabled(self) -> bool:           return self._get('_impatient_honking_enabled')
+    def set_impatient_honking_enabled(self, v: bool) -> None:  self._set('_impatient_honking_enabled', v, bool)
+
     def snapshot(self) -> StateSnapshot:
         with self._lock:
             return StateSnapshot(
@@ -97,4 +106,5 @@ class SharedState:
                 disk_vol=self._disk_vol,
                 honk_vol=self._honk_vol,
                 honk=self._honk,
+                impatient_honk=self._impatient_honk,
             )
