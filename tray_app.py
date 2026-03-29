@@ -78,6 +78,7 @@ def _open_settings(state: SharedState) -> None:
             ("Interrupts (vibrato)",state.get_interrupts_vol, state.set_interrupts_vol),
             ("Network Bell/Piano",  state.get_network_vol,  state.set_network_vol),
             ("Disk Tom",            state.get_disk_vol,     state.set_disk_vol),
+            ("GPU Organ",           state.get_gpu_vol,      state.set_gpu_vol),
             ("Honk Honk",           state.get_honk_vol,     state.set_honk_vol),
         ]
 
