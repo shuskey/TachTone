@@ -2,6 +2,9 @@
 
 > Your PC sounds like an engine. CPU load drives the RPM.
 
+[![GitHub release](https://img.shields.io/github/v/release/shuskey/TachTone)](https://github.com/shuskey/TachTone/releases/latest)
+![Platform](https://img.shields.io/badge/platform-Windows-blue)
+
 A Windows system tray app that synthesizes a continuous engine tone whose pitch tracks CPU usage in real time — idle hum at low load, full rev at 100%. Disk, network, and context-switch activity layer in percussion, arpeggios, and vibrato.
 
 ---
