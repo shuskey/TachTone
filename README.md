@@ -1,5 +1,7 @@
 # TachTone
 
+<img src="made-with-claude.png" alt="Made with Claude" width="200"/>
+
 > Your PC sounds like an engine. CPU load drives the RPM.
 
 [![GitHub release](https://img.shields.io/github/v/release/shuskey/TachTone)](https://github.com/shuskey/TachTone/releases/latest)
@@ -17,7 +19,6 @@ A Windows system tray app that synthesizes a continuous engine tone whose pitch 
 | Context switches | Vibrato / RPM instability |
 | Disk I/O | Tom-tom hits (pitch = activity level) |
 | Network traffic | Bell (incoming) + piano (outgoing) arpeggios |
-| Honk button | Two-tone car horn |
 | Claude needs attention | Two-tone car horn honk (Claude Code finished / waiting for you) |
 | Claude ignored too long | Impatient horn (Claude asked for input and you haven't responded) |
 
