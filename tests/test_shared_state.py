@@ -5,7 +5,7 @@ from shared_state import SharedState
 def test_default_values():
     state = SharedState()
     assert state.get_cpu() == 0.0
-    assert state.get_volume() == 50
+    assert state.get_volume() == 2
 
 
 def test_set_and_get_cpu():
