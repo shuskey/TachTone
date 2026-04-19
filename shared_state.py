@@ -27,7 +27,7 @@ class SharedState:
     def __init__(self):
         self._lock = threading.Lock()
         self._cpu_percent = 0.0
-        self._volume = 50
+        self._volume = 2
         self._ctx_rate = 0.0
         self._net_recv_rate = 0.0
         self._net_send_rate = 0.0
