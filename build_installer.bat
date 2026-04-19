@@ -8,7 +8,7 @@ echo.
 
 :: ---- PyInstaller ----
 echo [1/2] Building standalone app with PyInstaller...
-pyinstaller tacktone.spec --noconfirm
+.venv\Scripts\pyinstaller.exe tacktone.spec --noconfirm
 if errorlevel 1 (
     echo.
     echo ERROR: PyInstaller build failed.
