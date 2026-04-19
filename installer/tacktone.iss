@@ -3,7 +3,7 @@
 ; Build: run build_installer.bat from the repo root
 
 #define AppName "TachTone"
-#define AppVersion "1.0"
+#define AppVersion "1.1"
 #define AppPublisher "TachTone"
 #define AppExeName "TachTone.exe"
 
