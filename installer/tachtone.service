@@ -1,0 +1,16 @@
+[Unit]
+Description=TachTone — CPU/GPU/disk/network sound engine
+Documentation=https://github.com/shuskey/TachTone
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Projects/TachTone
+ExecStart=%h/Projects/TachTone/.venv/bin/python %h/Projects/TachTone/main.py
+Restart=on-failure
+RestartSec=5
+Environment=XDG_RUNTIME_DIR=%t
+
+[Install]
+WantedBy=graphical-session.target

@@ -1,6 +1,6 @@
 # TachTone
 
-A Windows system tray app that turns CPU usage into sound.
+A cross-platform (Windows + Linux) system tray app that turns CPU usage into sound.
 
 ## What It Does
 
