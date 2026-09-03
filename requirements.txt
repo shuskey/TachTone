@@ -4,4 +4,4 @@ numpy
 pystray
 Pillow
 pytest
-wmi
+wmi; sys_platform == "win32"
