@@ -137,6 +137,14 @@ def _open_settings(state: SharedState) -> None:
         ).grid(row=grid_row, column=0, columnspan=3, sticky="w")
         grid_row += 1
 
+        # Tk/Hyprland default new floating windows to (0, 0), which sits
+        # behind the top bar and clips the first row. Center it instead.
+        root.update_idletasks()
+        w, h = root.winfo_reqwidth(), root.winfo_reqheight()
+        x = (root.winfo_screenwidth() - w) // 2
+        y = (root.winfo_screenheight() - h) // 2
+        root.geometry(f"{w}x{h}+{x}+{y}")
+
         root.mainloop()
 
     threading.Thread(target=run, daemon=True).start()
