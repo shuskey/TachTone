@@ -71,6 +71,29 @@ def _open_settings(state: SharedState) -> None:
         root.title("TachTone Settings")
         root.resizable(False, False)
 
+        # Custom title bar: Hyprland draws no window chrome by default, so
+        # without this there's no visible/clickable way to close the dialog.
+        HEADER_BG = "#20232a"
+        CLOSE_W = 3
+        header = tk.Frame(root, bg=HEADER_BG)
+        header.pack(fill="x")
+        header.grid_columnconfigure(0, weight=1)
+        header.grid_columnconfigure(1, weight=0)
+        header.grid_columnconfigure(2, weight=1)
+
+        tk.Label(header, text="", bg=HEADER_BG, width=CLOSE_W).grid(
+            row=0, column=0, sticky="w"
+        )
+        tk.Label(
+            header, text="TachTone", bg=HEADER_BG, fg="white",
+            font=("Segoe UI", 11, "bold"),
+        ).grid(row=0, column=1, pady=8)
+        tk.Button(
+            header, text="✕", width=CLOSE_W, bd=0, highlightthickness=0,
+            bg=HEADER_BG, fg="white", activebackground="#e81123",
+            activeforeground="white", command=root.destroy,
+        ).grid(row=0, column=2, sticky="e")
+
         channels = [
             ("Master Volume",       state.get_volume,       state.set_volume),
             None,  # separator
@@ -136,6 +159,14 @@ def _open_settings(state: SharedState) -> None:
             variable=impatient_var, command=on_impatient_toggle, anchor="w",
         ).grid(row=grid_row, column=0, columnspan=3, sticky="w")
         grid_row += 1
+
+        # Tk/Hyprland default new floating windows to (0, 0), which sits
+        # behind the top bar and clips the first row. Center it instead.
+        root.update_idletasks()
+        w, h = root.winfo_reqwidth(), root.winfo_reqheight()
+        x = (root.winfo_screenwidth() - w) // 2
+        y = (root.winfo_screenheight() - h) // 2
+        root.geometry(f"{w}x{h}+{x}+{y}")
 
         root.mainloop()
 

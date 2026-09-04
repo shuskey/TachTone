@@ -57,6 +57,16 @@ is read via `nvidia-smi` (NVIDIA) or `/sys/class/drm/*/device/gpu_busy_percent`
 
 To run TachTone automatically on login, see [Autostart on Linux](#autostart-on-linux-systemd) below.
 
+**Tiling window managers (Hyprland, etc.):** the Settings window is a plain
+Tk toplevel with no window-manager hints, so a tiling WM may place it however
+it likes — on Hyprland this can pin it at `(0, 0)`, tucked behind the top bar
+with its first row clipped. If that happens, add a float+center window rule
+for it. For Hyprland/Omarchy:
+
+```lua
+o.window({ class = "^Tk$", title = "^TachTone Settings$" }, { center = true })
+```
+
 ## System Tray
 
 TachTone runs silently in the system tray.
